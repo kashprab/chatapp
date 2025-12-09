@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>WebSocket Chat — Gorgeous UI</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg: #0f1724;
+            --panel: #0b1220;
+            --muted: #9aa4b2;
+            --accent: #7c3aed;
+            --accent-2: #06b6d4;
+            --me: #1f2937;
+            --glass: rgba(255, 255, 255, 0.03);
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+            background: linear-gradient(180deg, #071226 0%, #08172a 100%);
+            color: #e6eef8
+        }
+
+        .app {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 980px;
+            height: 84vh;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+            border-radius: 16px;
+            padding: 18px;
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 18px;
+            box-shadow: 0 10px 30px rgba(2, 6, 23, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.02);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.01), rgba(255, 255, 255, 0.02));
+            border-radius: 12px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px
+        }
+
+        .logo {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700
+        }
+
+        .title {
+            font-weight: 700;
+            font-size: 16px
+        }
+
+        .subtitle {
+            font-size: 12px;
+            color: var(--muted)
+        }
+
+        .users {
+            margin-top: 12px;
+            overflow: auto;
+            padding-right: 6px
+        }
+
+        .user {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: default
+        }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600
+        }
+
+        .user .meta {
+            display: flex;
+            flex-direction: column
+        }
+
+        .user .name {
+            font-weight: 600
+        }
+
+        .user .status {
+            font-size: 12px;
+            color: var(--muted)
+        }
+
+        /* Chat panel */
+        .panel {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0.01));
+            border-radius: 12px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.02)
+        }
+
+        .panel-header .info {
+            display: flex;
+            gap: 12px;
+            align-items: center
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%
+        }
+
+        .messages {
+            flex: 1;
+            overflow: auto;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px
+        }
+
+        .msg {
+            max-width: 72%;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: var(--glass);
+            backdrop-filter: blur(6px);
+            box-shadow: 0 6px 18px rgba(2, 6, 23, 0.45)
+        }
+
+        .msg.me {
+            align-self: flex-end;
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.16), rgba(6, 182, 212, 0.06));
+            border: 1px solid rgba(124, 58, 237, 0.12)
+        }
+
+        .msg .meta {
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 6px
+        }
+
+        .msg .text {
+            font-size: 15px;
+            line-height: 1.35;
+            color: #e6eef8
+        }
+
+        .composer {
+            display: flex;
+            gap: 10px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.02)
+        }
+
+        .input {
+            flex: 1;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            padding: 12px;
+            border-radius: 10px;
+            color: inherit
+        }
+
+        .send {
+            background: linear-gradient(90deg, var(--accent), var(--accent-2));
+            border: none;
+            color: #042027;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer
+        }
+
+        .muted {
+            color: var(--muted)
+        }
+
+        /* Responsive */
+        @media (max-width:860px) {
+            .card {
+                grid-template-columns: 1fr;
+                max-width: 760px;
+                height: 92vh
+            }
+
+            .sidebar {
+                order: 2
+            }
+
+            .panel {
+                order: 1
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+        <div class="card" role="application">
+
+            <aside class="sidebar" aria-label="Users">
+                <div class="brand">
+                    <div class="logo">WC</div>
+                    <div>
+                        <div class="title">WebSocket Chat</div>
+                        <div class="subtitle">Realtime. Minimal. Gorgeous.</div>
+                    </div>
+                </div>
+
+                <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
+                    <input id="name" class="input" placeholder="Your name" aria-label="Your name" />
+                    <button id="joinBtn" class="send">Join</button>
+                </div>
+
+                <div style="margin-top:12px;font-size:13px;color:var(--muted)">Online</div>
+                <div id="users" class="users" aria-live="polite">
+                    <!-- user list populated dynamically -->
+                </div>
+
+                <div style="margin-top:auto;padding-top:12px;font-size:12px;color:var(--muted)">
+                    Tip: Press Enter to send. Reconnects automatically.
+                </div>
+            </aside>
+
+            <main class="panel">
+                <div class="panel-header">
+                    <div class="info">
+                        <div style="display:flex;flex-direction:column;">
+                            <div style="font-weight:700">Lobby</div>
+                            <div class="muted" id="connStatus">Disconnected</div>
+                        </div>
+                    </div>
+                    <div>
+                        <button id="clearBtn" class="send"
+                            style="background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);padding:8px 10px;border-radius:8px">Clear</button>
+                    </div>
+                </div>
+
+                <div id="messages" class="messages" role="log" aria-live="polite">
+                    <!-- messages -->
+                </div>
+
+                <div class="composer">
+                    <input id="msg" class="input" placeholder="Type a message..." aria-label="Message input" />
+                    <button id="sendBtn" class="send">Send</button>
+                </div>
+            </main>
+
+        </div>
+    </div>
+
+    <script>
+        // Minimal client enhancements: username, avatars, message rendering, auto-scroll, reconnect
+        const wsUrl = 'ws://localhost:8080';
+        let ws = null;
+        let name = '';
+
+        const usersEl = document.getElementById('users');
+        const messagesEl = document.getElementById('messages');
+        const connStatus = document.getElementById('connStatus');
+
+        function hexFromString(s) {
+            let h = 0; for (let i = 0; i < s.length; i++) h = s.charCodeAt(i) + ((h << 5) - h);
+            let color = '#'; for (let i = 0; i < 3; i++) color += ('00' + ((h >> (i * 8)) & 0xFF).toString(16)).slice(-2);
+            return color;
+        }
+
+        function avatarFor(s) {
+            const bg = hexFromString(s);
+            return bg;
+        }
+
+
+        function renderUserList(list) {
+            usersEl.innerHTML = '';
+            list.forEach(u => {
+                const div = document.createElement('div'); div.className = 'user';
+                const av = document.createElement('div'); av.className = 'avatar'; av.style.background = avatarFor(u.name);
+                av.textContent = u.name.charAt(0).toUpperCase();
+                const meta = document.createElement('div'); meta.className = 'meta';
+                const nm = document.createElement('div'); nm.className = 'name'; nm.textContent = u.name + (u.you ? ' (you)' : '');
+                const st = document.createElement('div'); st.className = 'status'; st.textContent = u.status || 'online';
+                meta.appendChild(nm); meta.appendChild(st);
+                div.appendChild(av); div.appendChild(meta);
+                usersEl.appendChild(div);
+            })
+        }
+
+        function addMessage({ from, text, me = false, time }) {
+            const m = document.createElement('div'); m.className = 'msg' + (me ? ' me' : '');
+            const meta = document.createElement('div'); meta.className = 'meta'; meta.textContent = (from ? from + ' • ' : '') + (new Date(time || Date.now())).toLocaleTimeString();
+            const txt = document.createElement('div'); txt.className = 'text'; txt.textContent = text;
+            m.appendChild(meta); m.appendChild(txt);
+            messagesEl.appendChild(m);
+            // auto-scroll
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        function setStatus(s, color) {
+            connStatus.textContent = s; connStatus.style.color = color || '';
+        }
+
+        function connect() {
+            setStatus('Connecting...', 'var(--muted)');
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                setStatus('Connected', 'var(--success)');
+                // announce presence
+                ws.send(JSON.stringify({ type: 'join', name }));
+            }
+
+            ws.onmessage = (ev) => {
+                try {
+                    const data = JSON.parse(ev.data);
+                    if (data.type === 'users') {
+                        renderUserList(data.list.map(u => ({ name: u, status: 'online', you: u === name })))
+                    } else if (data.type === 'message') {
+                        addMessage({ from: data.from, text: data.text, me: data.from === name, time: data.time });
+                    }
+                } catch (e) {
+                    // fallback: plain text
+                    addMessage({ from: 'server', text: ev.data, time: Date.now() });
+                }
+            }
+
+            ws.onclose = () => {
+                setStatus('Disconnected', 'var(--danger)');
+                // attempt reconnect
+                setTimeout(() => connect(), 2000 + Math.floor(Math.random() * 2000));
+            }
+
+            ws.onerror = (e) => { console.error('ws error', e); ws.close(); }
+        }
+
+        // UI wiring
+        const joinBtn = document.getElementById('joinBtn');
+        const nameInput = document.getElementById('name');
+        const sendBtn = document.getElementById('sendBtn');
+        const msgInput = document.getElementById('msg');
+        const clearBtn = document.getElementById('clearBtn');
+
+        joinBtn.addEventListener('click', () => {
+            const val = nameInput.value.trim();
+            if (!val) return nameInput.focus();
+            name = val; nameInput.value = '';
+            connect();
+            joinBtn.disabled = true; joinBtn.textContent = 'Joined';
+        })
+
+        function send() {
+            const text = msgInput.value.trim(); if (!text) return;
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'message', from: name, text, time: Date.now() }));
+                addMessage({ from: name, text, me: true, time: Date.now() });
+                msgInput.value = '';
+            } else {
+                addMessage({ from: 'system', text: 'Not connected', time: Date.now() });
+            }
+        }
+
+        sendBtn.addEventListener('click', send);
+        msgInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') send(); });
+        nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') joinBtn.click(); });
+        clearBtn.addEventListener('click', () => { messagesEl.innerHTML = ''; });
+
+        // quick demo fallback: show a welcome message
+        addMessage({ from: 'system', text: 'Welcome! Enter a name and press Join to connect.', time: Date.now() });
+
+    </script>
+</body>
+
+</html>
